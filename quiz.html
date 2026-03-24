@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>心动问答</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #1a0533 0%, #3d0b5e 40%, #7b1f8a 100%);
+      font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      overflow: hidden;
+    }
+
+    /* 星星背景 */
+    .stars {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .star {
+      position: absolute;
+      border-radius: 50%;
+      background: #fff;
+      animation: twinkle var(--d, 3s) infinite alternate;
+      opacity: 0;
+    }
+    @keyframes twinkle {
+      0%   { opacity: 0; transform: scale(0.8); }
+      100% { opacity: var(--op, 0.8); transform: scale(1.2); }
+    }
+
+    /* 心形漂浮 */
+    .hearts {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+    .heart {
+      position: absolute;
+      bottom: -60px;
+      font-size: var(--s, 24px);
+      opacity: 0;
+      animation: floatUp var(--fd, 6s) linear infinite;
+      animation-delay: var(--del, 0s);
+    }
+    @keyframes floatUp {
+      0%   { opacity: 0; transform: translateY(0) rotate(-10deg); }
+      10%  { opacity: 0.7; }
+      90%  { opacity: 0.3; }
+      100% { opacity: 0; transform: translateY(-110vh) rotate(15deg); }
+    }
+
+    /* 卡片 */
+    .card {
+      position: relative;
+      z-index: 10;
+      background: rgba(255,255,255,0.08);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 28px;
+      padding: 52px 48px 44px;
+      width: min(480px, 92vw);
+      box-shadow: 0 8px 48px rgba(120,0,180,0.35), 0 0 0 1px rgba(255,255,255,0.06);
+      text-align: center;
+    }
+
+    /* 步骤指示器 */
+    .steps {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 36px;
+    }
+    .step-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.25);
+      transition: all 0.4s;
+    }
+    .step-dot.active {
+      background: #ff6ecf;
+      box-shadow: 0 0 10px #ff6ecf;
+      transform: scale(1.3);
+    }
+    .step-dot.done {
+      background: rgba(255,255,255,0.55);
+    }
+
+    /* 问题编号 */
+    .q-number {
+      font-size: 13px;
+      color: rgba(255,200,255,0.65);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+
+    /* 问题文字 */
+    .q-text {
+      font-size: 26px;
+      font-weight: 700;
+      color: #fff;
+      line-height: 1.45;
+      margin-bottom: 40px;
+      text-shadow: 0 2px 16px rgba(200,0,200,0.4);
+    }
+
+    /* 选项按钮 */
+    .options {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .opt-btn {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: rgba(255,255,255,0.07);
+      border: 1.5px solid rgba(255,255,255,0.2);
+      border-radius: 14px;
+      padding: 16px 22px;
+      color: #fff;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.25s;
+      text-align: left;
+    }
+    .opt-btn:hover {
+      background: rgba(255,110,207,0.22);
+      border-color: #ff6ecf;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 22px rgba(255,80,200,0.25);
+    }
+    .opt-label {
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.12);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700;
+      font-size: 15px;
+      flex-shrink: 0;
+      transition: background 0.25s;
+    }
+    .opt-btn:hover .opt-label {
+      background: #ff6ecf;
+    }
+
+    /* 城市输入 */
+    .city-input {
+      width: 100%;
+      background: rgba(255,255,255,0.09);
+      border: 1.5px solid rgba(255,255,255,0.2);
+      border-radius: 14px;
+      padding: 16px 20px;
+      color: #fff;
+      font-size: 17px;
+      outline: none;
+      transition: border-color 0.25s, box-shadow 0.25s;
+      margin-bottom: 18px;
+    }
+    .city-input::placeholder { color: rgba(255,255,255,0.35); }
+    .city-input:focus {
+      border-color: #ff6ecf;
+      box-shadow: 0 0 0 3px rgba(255,110,207,0.18);
+    }
+    .submit-btn {
+      width: 100%;
+      background: linear-gradient(90deg, #e040fb, #ff6ecf);
+      border: none;
+      border-radius: 14px;
+      padding: 16px;
+      color: #fff;
+      font-size: 17px;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 1px;
+      transition: all 0.25s;
+      box-shadow: 0 4px 20px rgba(220,50,200,0.4);
+    }
+    .submit-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 28px rgba(220,50,200,0.55);
+    }
+    .submit-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* 拒绝页 */
+    .reject-icon { font-size: 56px; margin-bottom: 20px; }
+    .reject-title { font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 12px; }
+    .reject-msg { font-size: 15px; color: rgba(255,220,255,0.75); line-height: 1.7; margin-bottom: 28px; }
+    .back-btn {
+      background: rgba(255,255,255,0.12);
+      border: 1.5px solid rgba(255,255,255,0.25);
+      border-radius: 12px;
+      padding: 12px 28px;
+      color: #fff;
+      font-size: 15px;
+      cursor: pointer;
+      transition: all 0.25s;
+    }
+    .back-btn:hover { background: rgba(255,255,255,0.2); }
+
+    /* 结果页 / 匹配页 / 嘉宾页 / 满意页 通用 */
+    .result-icon { font-size: 60px; margin-bottom: 20px; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.15); } }
+    .result-title { font-size: 24px; font-weight: 700; color: #fff; margin-bottom: 12px; line-height:1.4; }
+    .result-city {
+      display: inline-block;
+      background: linear-gradient(90deg, #e040fb, #ff6ecf);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      font-size: 20px;
+      font-weight: 700;
+      margin: 4px 0 14px;
+    }
+    .result-msg { font-size: 15px; color: rgba(255,220,255,0.8); line-height: 1.8; margin-bottom: 28px; }
+    .restart-btn {
+      background: linear-gradient(90deg, #e040fb, #ff6ecf);
+      border: none;
+      border-radius: 12px;
+      padding: 13px 32px;
+      color: #fff;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(220,50,200,0.4);
+      transition: all 0.25s;
+    }
+    .restart-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(220,50,200,0.55); }
+
+    /* 匹配成功页 - 匹配动效 */
+    .match-radar {
+      position: relative;
+      width: 110px; height: 110px;
+      margin: 0 auto 24px;
+    }
+    .match-radar .ring {
+      position: absolute; inset: 0;
+      border-radius: 50%;
+      border: 2px solid #ff6ecf;
+      animation: sonar 2s ease-out infinite;
+    }
+    .match-radar .ring:nth-child(2) { animation-delay: 0.6s; }
+    .match-radar .ring:nth-child(3) { animation-delay: 1.2s; }
+    .match-radar .core {
+      position: absolute; inset: 30px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #e040fb, #ff6ecf);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 26px;
+      box-shadow: 0 0 24px rgba(255,110,207,0.6);
+    }
+    @keyframes sonar {
+      0%   { transform: scale(0.5); opacity: 0.8; }
+      100% { transform: scale(2.2); opacity: 0; }
+    }
+
+    /* 行动按钮组 */
+    .btn-row {
+      display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;
+    }
+    .btn-primary {
+      background: linear-gradient(90deg, #e040fb, #ff6ecf);
+      border: none; border-radius: 12px; padding: 14px 28px;
+      color: #fff; font-size: 16px; font-weight: 700; cursor: pointer;
+      box-shadow: 0 4px 20px rgba(220,50,200,0.4); transition: all 0.25s;
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(220,50,200,0.55); }
+    .btn-ghost {
+      background: rgba(255,255,255,0.1); border: 1.5px solid rgba(255,255,255,0.25);
+      border-radius: 12px; padding: 14px 28px; color: #fff; font-size: 16px;
+      cursor: pointer; transition: all 0.25s;
+    }
+    .btn-ghost:hover { background: rgba(255,255,255,0.18); }
+
+    /* 嘉宾图片卡 */
+    .guest-card {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,110,207,0.35);
+      border-radius: 20px; overflow: hidden;
+      margin-bottom: 18px;
+      box-shadow: 0 4px 32px rgba(255,0,200,0.2);
+    }
+    .guest-card img {
+      width: 100%; max-height: 300px; object-fit: cover; display: block;
+    }
+    .guest-info {
+      padding: 14px 18px 16px;
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .guest-name {
+      font-size: 20px; font-weight: 700; color: #fff;
+    }
+    .guest-tag {
+      display: inline-block;
+      background: linear-gradient(90deg, #e040fb, #ff6ecf);
+      border-radius: 20px; padding: 3px 12px; font-size: 12px;
+      color: #fff; font-weight: 600; margin-top: 4px;
+    }
+    .guest-desc {
+      font-size: 13px; color: rgba(255,210,255,0.7); margin-top: 6px; line-height: 1.6;
+    }
+
+    /* 满意度星级 */
+    .stars-rate {
+      display: flex; justify-content: center; gap: 10px; margin: 18px 0 26px;
+    }
+    .star-btn {
+      font-size: 36px; cursor: pointer; transition: transform 0.2s, filter 0.2s;
+      filter: grayscale(1) opacity(0.4);
+      background: none; border: none; padding: 0;
+    }
+    .star-btn.lit { filter: none; }
+    .star-btn:hover { transform: scale(1.2); }
+    .rate-label {
+      font-size: 14px; color: rgba(255,200,255,0.7); margin-bottom: 8px; min-height: 20px;
+    }
+    .rate-thanks {
+      font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 10px;
+    }
+    .rate-sub {
+      font-size: 14px; color: rgba(255,210,255,0.75); line-height: 1.7; margin-bottom: 24px;
+    }
+
+    /* 动画 */
+    .fade-in  { animation: fadeIn 0.45s ease forwards; }
+    .fade-out { animation: fadeOut 0.3s ease forwards; }
+    @keyframes fadeIn  { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes fadeOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-14px); } }
+
+    /* 烟花粒子 */
+    .confetti {
+      position: fixed; inset: 0; pointer-events: none; z-index: 100;
+    }
+    .cparticle {
+      position: absolute;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      animation: cfall var(--cd,1.8s) var(--cdel,0s) ease-in forwards;
+    }
+    @keyframes cfall {
+      0%   { transform: translateY(var(--cy,40vh)) translateX(0) scale(1); opacity: 1; }
+      100% { transform: translateY(100vh) translateX(var(--cx,0px)) scale(0.3); opacity: 0; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- 星星 -->
+<div class="stars" id="stars"></div>
+<!-- 心形 -->
+<div class="hearts" id="hearts"></div>
+<!-- 烟花容器 -->
+<div class="confetti" id="confetti"></div>
+
+<div class="card" id="card">
+  <!-- 内容由JS动态渲染 -->
+</div>
+
+<script>
+/* ──────────── 背景装饰 ──────────── */
+(function () {
+  const starsEl = document.getElementById('stars');
+  for (let i = 0; i < 90; i++) {
+    const s = document.createElement('div');
+    s.className = 'star';
+    const size = Math.random() * 2.5 + 0.5;
+    s.style.cssText = `
+      width:${size}px; height:${size}px;
+      top:${Math.random()*100}%;
+      left:${Math.random()*100}%;
+      --d:${(Math.random()*4+1.5).toFixed(1)}s;
+      --op:${(Math.random()*0.6+0.2).toFixed(2)};
+      animation-delay:${(Math.random()*4).toFixed(1)}s;
+    `;
+    starsEl.appendChild(s);
+  }
+
+  const heartsEl = document.getElementById('hearts');
+  const emojis = ['💜','💗','💖','💝','✨','🌸'];
+  for (let i = 0; i < 14; i++) {
+    const h = document.createElement('div');
+    h.className = 'heart';
+    h.textContent = emojis[Math.floor(Math.random()*emojis.length)];
+    h.style.cssText = `
+      left:${Math.random()*95}%;
+      --s:${(Math.random()*20+14)}px;
+      --fd:${(Math.random()*6+5).toFixed(1)}s;
+      --del:${(Math.random()*8).toFixed(1)}s;
+    `;
+    heartsEl.appendChild(h);
+  }
+})();
+
+/* ──────────── 状态 ──────────── */
+const state = { step: 1, city: '' };
+
+const questions = [
+  {
+    id: 1,
+    number: 'Question 01',
+    text: '你是否年满 18 岁？',
+    options: [{ label: 'A', text: '是，我已满 18 岁' }, { label: 'B', text: '否，我未满 18 岁' }],
+    gateOption: 'A'
+  },
+  {
+    id: 2,
+    number: 'Question 02',
+    text: '您是否渴望一段刺激的爱情？',
+    options: [{ label: 'A', text: '是的，我心向往之' }, { label: 'B', text: '暂时不需要' }],
+    gateOption: 'A'
+  },
+  {
+    id: 3,
+    number: 'Question 03',
+    text: '您所在的城市是哪里？',
+    isCity: true
+  }
+];
+
+/* ──────────── 渲染 ──────────── */
+const card = document.getElementById('card');
+
+function renderSteps(current) {
+  return `<div class="steps">
+    ${[1,2,3].map(i => `<div class="step-dot ${i < current ? 'done' : i === current ? 'active' : ''}"></div>`).join('')}
+  </div>`;
+}
+
+function renderQuestion(q) {
+  if (q.isCity) {
+    return `
+      ${renderSteps(q.id)}
+      <div class="q-number">${q.number}</div>
+      <div class="q-text">${q.text}</div>
+      <div class="options">
+        <input class="city-input" id="cityInput" type="text" placeholder="请输入您所在的城市，例如：北京" maxlength="30" />
+        <button class="submit-btn" id="submitBtn" onclick="submitCity()" disabled>确认提交 →</button>
+      </div>
+    `;
+  }
+  return `
+    ${renderSteps(q.id)}
+    <div class="q-number">${q.number}</div>
+    <div class="q-text">${q.text}</div>
+    <div class="options">
+      ${q.options.map(o => `
+        <button class="opt-btn" onclick="choose(${q.id}, '${o.label}')">
+          <span class="opt-label">${o.label}</span>
+          <span>${o.text}</span>
+        </button>
+      `).join('')}
+    </div>
+  `;
+}
+
+function renderReject(step) {
+  const msgs = {
+    1: { icon: '🔞', title: '抱歉，暂时无法继续', msg: '本网站仅向 18 岁及以上的成年人开放。\n请在达到法定年龄后再来哦 ~' },
+    2: { icon: '💤', title: '没关系，等你准备好', msg: '当心里准备好迎接爱情的时候，\n随时欢迎回来 ~' }
+  };
+  const m = msgs[step];
+  return `
+    <div class="reject-icon">${m.icon}</div>
+    <div class="reject-title">${m.title}</div>
+    <div class="reject-msg" style="white-space:pre-line">${m.msg}</div>
+    <button class="back-btn" onclick="restart()">← 重新开始</button>
+  `;
+}
+
+/* 第一步：匹配中动效 → 自动跳转到"已找到" */
+function renderMatching(city) {
+  setTimeout(() => switchContent(renderMatchFound(city)), 2200);
+  return `
+    <div class="match-radar">
+      <div class="ring"></div><div class="ring"></div><div class="ring"></div>
+      <div class="core">💗</div>
+    </div>
+    <div class="result-title">正在为您匹配专属女嘉宾…</div>
+    <div class="result-msg">来自 <strong>${city}</strong> 的缘分正在计算中，请稍候 ~</div>
+  `;
+}
+
+/* 第二步：匹配成功，询问是否查看 */
+function renderMatchFound(city) {
+  launchConfetti();
+  return `
+    <div class="result-icon">🎉</div>
+    <div class="result-title">已为您找到相匹配的女嘉宾！</div>
+    <div class="result-city">📍 来自 ${city} 的专属缘分</div>
+    <div class="result-msg">
+      系统已为您精准匹配到一位心仪嘉宾 💝<br>
+      她期待着与您相识，是否现在查看？
+    </div>
+    <div class="btn-row">
+      <button class="btn-primary" onclick="showGuest()">💌 查看嘉宾</button>
+      <button class="btn-ghost" onclick="restart()">下次再说</button>
+    </div>
+  `;
+}
+
+/* 第三步：展示东北雨姐 */
+function renderGuest() {
+  // 多个备用图片源，依次尝试
+  const imgSrcs = [
+    'https://bkimg.cdn.bcebos.com/pic/9358d109b3de9c82d1584947a70e91f28618367a?x-bce-process=image/format,f_auto/resize,m_lfit,limit_1,h_440',
+    'https://p3-sign.toutiaoimg.com/tos-cn-i-6w9my0ksvp/b09e8f3a7d9e4f8e9f3a7d9e4f8e9f3a~tplv-obj.image',
+    'https://via.placeholder.com/400x300/8b1a8b/ffffff?text=%E4%B8%9C%E5%8C%97%E9%9B%A8%E5%A7%90'
+  ];
+  return `
+    <div class="result-title" style="margin-bottom:14px;">✨ 您的专属匹配嘉宾</div>
+    <div class="guest-card">
+      <img
+        id="guestImg"
+        src="${imgSrcs[0]}"
+        alt="东北雨姐"
+        style="width:100%;max-height:300px;object-fit:cover;display:block;background:#2a0040"
+      />
+      <div class="guest-info">
+        <div class="guest-name">东北雨姐 🌧️</div>
+        <span class="guest-tag">💪 东北豪爽派</span>
+        <div class="guest-desc">
+          来自东北大地，性格豪爽直率，热爱美食与生活。<br>
+          擅长厨艺，力大无穷，分分钟把你宠成宝贝 🐾
+        </div>
+      </div>
+    </div>
+    <div class="result-msg" style="margin-bottom:18px;">
+      缘分天注定，相遇靠勇气 💕<br>与雨姐的故事，由你来续写 ~
+    </div>
+    <div class="btn-row">
+      <button class="btn-primary" onclick="showSatisfaction()">继续 →</button>
+      <button class="btn-ghost" onclick="restart()">重新匹配</button>
+    </div>
+  `;
+}
+
+/* 第四步：满意度 */
+function renderSatisfaction() {
+  return `
+    <div class="result-icon" style="font-size:48px">🌟</div>
+    <div class="result-title">对此次探索，您满意吗？</div>
+    <div class="rate-label" id="rateLabel">点击星星为本次体验打分</div>
+    <div class="stars-rate" id="starsRate">
+      ${[1,2,3,4,5].map(i => `<button class="star-btn" data-val="${i}" onclick="rate(${i})">⭐</button>`).join('')}
+    </div>
+    <div id="rateResult" style="display:none">
+      <div class="rate-thanks" id="rateThanks"></div>
+      <div class="rate-sub" id="rateSub"></div>
+      <div class="btn-row">
+        <button class="btn-primary" onclick="restart()">再来一次 💜</button>
+      </div>
+    </div>
+    <div id="rateSubmitWrap" style="margin-top:0">
+      <button class="btn-primary" id="rateSubmitBtn" style="display:none;width:100%" onclick="submitRate()">提交评分</button>
+    </div>
+  `;
+}
+
+/* ──────────── 切换动画 ──────────── */
+function switchContent(html) {
+  return new Promise(resolve => {
+    card.classList.add('fade-out');
+    setTimeout(() => {
+      card.innerHTML = html;
+      card.classList.remove('fade-out');
+      card.classList.add('fade-in');
+      // 城市输入监听
+      const inp = document.getElementById('cityInput');
+      if (inp) {
+        inp.addEventListener('input', () => {
+          document.getElementById('submitBtn').disabled = inp.value.trim().length === 0;
+        });
+        inp.focus();
+      }
+      setTimeout(() => card.classList.remove('fade-in'), 500);
+      resolve();
+    }, 300);
+  });
+}
+
+/* ──────────── 交互逻辑 ──────────── */
+function choose(qId, label) {
+  const q = questions.find(x => x.id === qId);
+  if (label !== q.gateOption) {
+    switchContent(renderReject(qId));
+  } else {
+    const next = questions.find(x => x.id === qId + 1);
+    if (next) switchContent(renderQuestion(next));
+  }
+}
+
+function submitCity() {
+  const inp = document.getElementById('cityInput');
+  const city = inp ? inp.value.trim() : '';
+  if (!city) return;
+  state.city = city;
+  switchContent(renderMatching(city));
+}
+
+function showGuest() {
+  switchContent(renderGuest());
+  // 图片加载失败时逐个尝试备用源
+  setTimeout(() => {
+    const img = document.getElementById('guestImg');
+    if (!img) return;
+    const fallbacks = [
+      'https://bkimg.cdn.bcebos.com/pic/9358d109b3de9c82d1584947a70e91f28618367a?x-bce-process=image/format,f_auto/resize,m_lfit,limit_1,h_440',
+      'https://nimg.ws.126.net/?url=http%3A%2F%2Fdingyue.ws.126.net%2F2024%2F0913%2F6f3e2e4cj00sjhsyw001fd200hs00hsg00it00it.jpg&thumbnail=660x2147483647&quality=80&type=jpg',
+      'https://p6.itc.cn/images01/20241009/95a77b8e7dce4ed7b7c9d2e3f1a0b5c6.jpeg',
+      'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="280" viewBox="0 0 400 280"><rect width="400" height="280" fill="%238b1a8b"/><text x="200" y="120" text-anchor="middle" fill="%23fff" font-size="48">🌧️</text><text x="200" y="175" text-anchor="middle" fill="%23ffb3e6" font-size="22" font-family="Microsoft YaHei">东北雨姐</text><text x="200" y="215" text-anchor="middle" fill="%23e0a0e0" font-size="14" font-family="Microsoft YaHei">豪爽 · 热情 · 力大无穷</text></svg>'
+    ];
+    let idx = 0;
+    img.onerror = function() {
+      idx++;
+      if (idx < fallbacks.length) {
+        img.src = fallbacks[idx];
+      }
+    };
+    // 如果当前src已在fallbacks里，确保能继续
+    if (!img.complete || img.naturalHeight === 0) {
+      img.src = img.src + '?t=' + Date.now();
+    }
+  }, 200);
+}
+
+function showSatisfaction() {
+  switchContent(renderSatisfaction());
+}
+
+let selectedRate = 0;
+function rate(val) {
+  selectedRate = val;
+  const labels = ['', '有点失望 😔', '一般般 😐', '还不错 😊', '很满意 😄', '超级满意！🤩'];
+  document.getElementById('rateLabel').textContent = labels[val];
+  document.querySelectorAll('.star-btn').forEach(btn => {
+    btn.classList.toggle('lit', parseInt(btn.dataset.val) <= val);
+  });
+  document.getElementById('rateSubmitBtn').style.display = 'block';
+}
+
+function submitRate() {
+  if (!selectedRate) return;
+  const comments = [
+    '', '感谢您的反馈，我们会继续努力 💪', '您的意见很宝贵，我们会改进！',
+    '很高兴您还不错！期待下次相遇 😊',
+    '非常感谢您的认可！💕',
+    '太开心了！您的满意是我们最大的动力 🎉🎊'
+  ];
+  document.getElementById('rateSubmitWrap').style.display = 'none';
+  document.getElementById('starsRate').style.pointerEvents = 'none';
+  document.getElementById('rateThanks').textContent = selectedRate >= 4 ? '感谢您的喜爱！💖' : '感谢您的反馈！';
+  document.getElementById('rateSub').textContent = comments[selectedRate];
+  document.getElementById('rateResult').style.display = 'block';
+  if (selectedRate >= 4) launchConfetti();
+}
+
+function restart() {
+  selectedRate = 0;
+  switchContent(renderQuestion(questions[0]));
+}
+
+/* ──────────── 烟花 ──────────── */
+function launchConfetti() {
+  const container = document.getElementById('confetti');
+  container.innerHTML = '';
+  const colors = ['#ff6ecf','#e040fb','#ffb3e6','#fff','#f9a8d4','#c084fc','#fcd34d'];
+  for (let i = 0; i < 70; i++) {
+    const p = document.createElement('div');
+    p.className = 'cparticle';
+    const cx = (Math.random() - 0.5) * 600;
+    p.style.cssText = `
+      left:${Math.random()*100}%;
+      background:${colors[Math.floor(Math.random()*colors.length)]};
+      --cx:${cx}px;
+      --cy:${-(Math.random()*60+30)}vh;
+      --cd:${(Math.random()*1.2+1).toFixed(2)}s;
+      --cdel:${(Math.random()*0.6).toFixed(2)}s;
+    `;
+    container.appendChild(p);
+  }
+  setTimeout(() => { container.innerHTML = ''; }, 3000);
+}
+
+/* ──────────── 初始化 ──────────── */
+card.innerHTML = renderQuestion(questions[0]);
+</script>
+</body>
+</html>
